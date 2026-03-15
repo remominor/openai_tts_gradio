@@ -1,0 +1,2 @@
+[console_scripts]
+openai-tts-gradio = openai_tts_gradio:main
