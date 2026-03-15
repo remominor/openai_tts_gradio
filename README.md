@@ -15,6 +15,8 @@ parent repository and can be copied to another machine as-is.
 - Supports `Auto`, `Streaming`, and `Non-streaming` request modes
 - Supports `Default`, `SSE`, and `Audio` stream format requests for `/v1/audio/speech`
 - Streams playback from `/v1/audio/speech` over SSE or streaming WAV/PCM audio bodies when the server supports it
+- Uses the Gradio/server audio-body path by default for `Audio` streaming so it works with servers that do not support SSE or browser cross-origin fetches
+- Keeps browser-direct audio-body streaming available as an explicit opt-in for CORS-capable servers
 - Keeps the completed result in a Gradio `Audio` block for replay or download
 - Uses readable light and dark mode styling
 
@@ -40,6 +42,14 @@ pip install gradio httpx
 python openai_tts_gradio.py --server-base-url http://10.50.0.51:8000/v1
 ```
 
+If you want to use the browser-direct audio-body path instead of the default
+Gradio/server path:
+
+```bash
+OPENAI_TTS_GRADIO_ENABLE_BROWSER_AUDIO=1 \
+python openai_tts_gradio.py --server-base-url http://10.50.0.51:8000/v1
+```
+
 ## CLI
 
 ```bash
@@ -62,6 +72,44 @@ You can also set the default server URL with:
 export OPENAI_TTS_SERVER_BASE_URL=http://10.50.0.51:8000/v1
 ```
 
+Useful environment variables:
+
+- `OPENAI_TTS_SERVER_BASE_URL`: default backend URL used at startup
+- `OPENAI_TTS_GRADIO_ENABLE_BROWSER_AUDIO=1`: opt in to browser-direct audio-body streaming
+- `OPENAI_TTS_GRADIO_LOG_LEVEL=DEBUG`: enable verbose client logging
+
+## Streaming Paths
+
+The UI exposes two separate controls:
+
+- `Request Mode`: `Auto`, `Streaming`, or `Non-streaming`
+- `Stream Format`: `Default`, `SSE`, or `Audio`
+
+How they behave:
+
+- `Non-streaming` waits for the completed response and then loads the final audio into the player.
+- `Streaming` starts playback as soon as the backend begins returning stream data.
+- `Auto` uses the streaming-capable server path and lets the app infer the response type from the returned headers.
+
+Stream format details:
+
+- `Default` is the safest first choice when you are not sure what the backend supports.
+- `SSE` is only appropriate for servers that return `text/event-stream` from `/v1/audio/speech`.
+- `Audio` requests streaming audio data such as WAV or PCM. This now uses the server-side Gradio path by default, which is the more compatible option for backends that do not support SSE or do not allow browser cross-origin requests.
+
+Browser-direct audio mode:
+
+- The browser-direct `Audio` path is disabled by default.
+- Enable it with `OPENAI_TTS_GRADIO_ENABLE_BROWSER_AUDIO=1`.
+- Use it only when the TTS server is reachable directly from the browser and its CORS policy allows that request.
+- If explicit `Audio` works in `Default` mode but fails when browser-direct mode is enabled, the usual cause is CORS or another browser-side network restriction rather than TTS generation itself.
+
+Recommended choices:
+
+- If a server does not support SSE, use `Stream Format = Audio` or `Default`.
+- If a server streams audio bodies correctly but browser fetches fail, keep browser-direct audio disabled and use the default Gradio/server path.
+- If you need to validate SSE specifically, select `Stream Format = SSE`; failures there usually indicate the backend is returning audio bytes instead of SSE events.
+
 ## Supported Server Endpoints
 
 - `GET /v1/audio/models`
@@ -69,6 +117,13 @@ export OPENAI_TTS_SERVER_BASE_URL=http://10.50.0.51:8000/v1
 - `GET /v1/audio/voices`
 - `POST /upload_voice`
 - `POST /v1/audio/speech`
+
+## Troubleshooting
+
+- If the UI seems stuck on a streaming request, restart the TTS backend first. A hung backend queue can look like a client regression.
+- If `SSE` fails but `Audio` works, the backend likely does not implement SSE for `/v1/audio/speech`.
+- If `Audio` only fails when browser-direct mode is enabled, disable `OPENAI_TTS_GRADIO_ENABLE_BROWSER_AUDIO` and retry through the default Gradio/server path.
+- For server-side debug logs, start the app with `OPENAI_TTS_GRADIO_LOG_LEVEL=DEBUG`.
 
 ## Portability
 

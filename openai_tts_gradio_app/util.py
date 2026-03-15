@@ -7,6 +7,8 @@ import gradio as gr
 import httpx
 
 from .config import (
+    ENABLE_BROWSER_AUDIO,
+    ENABLE_BROWSER_AUDIO_ENV_VAR,
     LOGGER,
     REQUEST_MODE_AUTO,
     REQUEST_MODE_NON_STREAMING,
@@ -69,16 +71,30 @@ def browser_audio_enabled(request_mode: str | None, stream_format: str | None) -
     mode = normalize_request_mode(request_mode)
     requested_stream_format = normalize_stream_format(stream_format)
     enabled = (
-        mode != REQUEST_MODE_NON_STREAMING
+        ENABLE_BROWSER_AUDIO
+        and mode != REQUEST_MODE_NON_STREAMING
         and requested_stream_format == STREAM_FORMAT_AUDIO
     )
     LOGGER.debug(
-        "browser_audio_enabled mode=%s stream_format=%s enabled=%s",
+        "browser_audio_enabled env=%s mode=%s stream_format=%s enabled=%s",
+        ENABLE_BROWSER_AUDIO,
         mode,
         requested_stream_format,
         enabled,
     )
     return enabled
+
+
+def browser_audio_mode_hint() -> str:
+    if ENABLE_BROWSER_AUDIO:
+        return (
+            "Browser-direct audio-body mode is enabled. This can fail on servers that do "
+            "not allow cross-origin browser fetches."
+        )
+    return (
+        "Browser-direct audio-body mode is disabled by default. Set "
+        f"<code>{ENABLE_BROWSER_AUDIO_ENV_VAR}=1</code> to opt in."
+    )
 
 
 def reset_audio_outputs(request_mode: str) -> tuple[str, dict[str, Any], str]:
@@ -107,12 +123,17 @@ def generation_control_updates(
     if use_browser_audio:
         route_message = (
             "Active path: browser audio-body streaming. This bypasses the server-side "
-            "trigger bridge and runs the request directly in the browser."
+            "request path and runs the request directly in the browser."
         )
     elif mode == REQUEST_MODE_NON_STREAMING:
         route_message = "Active path: completed server response through Gradio."
     elif requested_stream_format == STREAM_FORMAT_SSE:
         route_message = "Active path: SSE live streaming through Gradio."
+    elif requested_stream_format == STREAM_FORMAT_AUDIO:
+        route_message = (
+            "Active path: audio-body streaming through Gradio. "
+            + browser_audio_mode_hint()
+        )
     else:
         route_message = "Active path: server request through Gradio with automatic stream detection."
 

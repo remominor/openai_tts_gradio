@@ -254,7 +254,7 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
                     ("Audio", STREAM_FORMAT_AUDIO),
                 ],
                 value=STREAM_FORMAT_DEFAULT,
-                info="Audio uses a browser-owned request path so streaming audio bodies do not rely on hidden Gradio trigger fields.",
+                info="Audio uses the Gradio/server request path by default for compatibility with servers that do not allow browser-direct fetches.",
             )
             generation_route = gr.HTML(value=initial_route)
 

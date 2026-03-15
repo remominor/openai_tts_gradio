@@ -89,8 +89,48 @@ def live_player_head() -> str:
     root.innerHTML = buildStatusMarkup(message, ok);
   }}
 
-  function findCompletedAudio() {{
-    return document.querySelector("#openai-tts-output-audio audio");
+  function completedAudioRoot() {{
+    return document.querySelector("#openai-tts-output-audio");
+  }}
+
+  function findCompletedAudioParts() {{
+    const root = completedAudioRoot();
+    if (!root) {{
+      return {{ root: null, empty: null, container: null, browserAudio: null, nativeAudio: null }};
+    }}
+    const empty = root.querySelector(".empty");
+    const container = root.querySelector("[data-openai-tts-browser-output='1']");
+    const browserAudio = root.querySelector("[data-openai-tts-browser-player='1']");
+    const nativeAudio = root.querySelector("audio:not([data-openai-tts-browser-player='1'])");
+    return {{ root, empty, container, browserAudio, nativeAudio }};
+  }}
+
+  function ensureCompletedAudio() {{
+    const parts = findCompletedAudioParts();
+    if (!parts.root) {{
+      return null;
+    }}
+    if (parts.empty) {{
+      parts.empty.style.display = "none";
+    }}
+    let container = parts.container;
+    if (!container) {{
+      container = document.createElement("div");
+      container.dataset.openaiTtsBrowserOutput = "1";
+      container.style.marginTop = "0.75rem";
+      parts.root.appendChild(container);
+    }}
+    container.style.display = "block";
+    let audio = parts.browserAudio;
+    if (!audio) {{
+      audio = document.createElement("audio");
+      audio.controls = true;
+      audio.preload = "metadata";
+      audio.style.width = "100%";
+      audio.dataset.openaiTtsBrowserPlayer = "1";
+      container.appendChild(audio);
+    }}
+    return audio;
   }}
 
   function revokeCompletedAudioUrl() {{
@@ -107,20 +147,25 @@ def live_player_head() -> str:
 
   function clearCompletedAudio() {{
     revokeCompletedAudioUrl();
-    const audio = findCompletedAudio();
-    if (!audio) {{
-      return;
+    const {{ empty, container, browserAudio, nativeAudio }} = findCompletedAudioParts();
+    if (browserAudio) {{
+      try {{
+        browserAudio.pause();
+      }} catch (err) {{}}
+      browserAudio.removeAttribute("src");
+      browserAudio.load();
     }}
-    try {{
-      audio.pause();
-    }} catch (err) {{}}
-    audio.removeAttribute("src");
-    audio.load();
+    if (container && container.dataset.openaiTtsBrowserOutput === "1") {{
+      container.style.display = "none";
+    }}
+    if (empty && !nativeAudio) {{
+      empty.style.display = "";
+    }}
   }}
 
   function setCompletedAudioBytes(audioBytes, mimeType = "audio/wav") {{
     clearCompletedAudio();
-    const audio = findCompletedAudio();
+    const audio = ensureCompletedAudio();
     if (!audio) {{
       debug("completed audio element missing");
       return null;
