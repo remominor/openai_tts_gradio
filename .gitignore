@@ -209,3 +209,4 @@ __marimo__/
 # Project-generated artifacts
 .gradio/
 gradio_cached_examples/
+openai_tts_gradio.egg-info/

@@ -1,2 +1,0 @@
-openai_tts_gradio
-openai_tts_gradio_app
