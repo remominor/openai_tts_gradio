@@ -97,10 +97,18 @@ def refresh_server_data(
     except Exception as exc:
         voice_error = exc
 
-    model_value = current_model if current_model in models else (models[0] if models else None)
+    current_model_value = (current_model or "").strip() or None
+    model_value = current_model_value or (models[0] if models else None)
+    model_choices = list(models)
+    if model_value and model_value not in model_choices:
+        model_choices.append(model_value)
     voice_choices = voice_dropdown_choices(voices)
     valid_voice_values = {value for _label, value in voice_choices}
-    voice_value = current_voice if current_voice in valid_voice_values else "default"
+    current_voice_value = (current_voice or "").strip() or "default"
+    if current_voice_value not in valid_voice_values:
+        voice_choices.append((current_voice_value, current_voice_value))
+        valid_voice_values.add(current_voice_value)
+    voice_value = current_voice_value
 
     ok = bool(models)
     if model_error is not None and not models:
@@ -110,7 +118,7 @@ def refresh_server_data(
                 f". Voice listing still loaded {max(len(voice_choices) - 1, 0)} stored voice(s)"
             )
         return (
-            gr.update(choices=models, value=model_value),
+            gr.update(choices=model_choices, value=model_value),
             gr.update(choices=voice_choices, value=voice_value),
             status_markup(status, ok=False),
             model_value,
@@ -136,7 +144,7 @@ def refresh_server_data(
         voice_dir,
     )
     return (
-        gr.update(choices=models, value=model_value),
+        gr.update(choices=model_choices, value=model_value),
         gr.update(choices=voice_choices, value=voice_value),
         status_markup(status, ok=ok),
         model_value,
@@ -185,14 +193,16 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
                     choices=[],
                     value=None,
                     interactive=True,
-                    allow_custom_value=False,
+                    allow_custom_value=True,
+                    info="Select a listed model or type one directly.",
                 )
                 voice_dropdown = gr.Dropdown(
                     label="Voice",
                     choices=[("default", "default")],
                     value="default",
                     interactive=True,
-                    allow_custom_value=False,
+                    allow_custom_value=True,
+                    info="Select a listed voice or type one directly.",
                 )
 
             with gr.Accordion("Upload Voice", open=False):
