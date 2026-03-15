@@ -74,18 +74,38 @@ def normalize_voice_entry(item: dict[str, Any]) -> dict[str, Any] | None:
     return normalized
 
 
+def extract_raw_voice_entries(payload: Any) -> list[dict[str, Any]]:
+    if not isinstance(payload, dict):
+        return []
+
+    data_entries = payload.get("data")
+    if isinstance(data_entries, list):
+        structured_entries = [item for item in data_entries if isinstance(item, dict)]
+        if structured_entries:
+            return structured_entries
+
+    voice_entries = payload.get("voices")
+    if not isinstance(voice_entries, list):
+        return []
+
+    structured_entries = [item for item in voice_entries if isinstance(item, dict)]
+    if structured_entries:
+        return structured_entries
+
+    fallback_entries: list[dict[str, Any]] = []
+    for item in voice_entries:
+        voice_id = str(item).strip()
+        if voice_id:
+            fallback_entries.append({"id": voice_id, "name": voice_id})
+    return fallback_entries
+
+
 def fetch_voices(endpoints: APIEndpoints) -> tuple[list[dict[str, Any]], str]:
     response = httpx.get(endpoints.voices_url, timeout=DEFAULT_REQUEST_TIMEOUT)
     response.raise_for_status()
     payload = response.json()
 
-    raw_voices: Any = []
-    if isinstance(payload, dict):
-        if isinstance(payload.get("voices"), list):
-            raw_voices = payload["voices"]
-        elif payload.get("object") == "list" and isinstance(payload.get("data"), list):
-            raw_voices = payload["data"]
-
+    raw_voices = extract_raw_voice_entries(payload)
     voices: list[dict[str, Any]] = []
     for item in raw_voices:
         if not isinstance(item, dict):
