@@ -1,0 +1,15 @@
+services:
+  openai-tts-gradio:
+    build: .
+    image: openai-tts-gradio:latest
+    container_name: openai-tts-gradio
+    ports:
+      - "7860:7860"
+    environment:
+      # Change this to the LAN address of your OpenAI-compatible TTS backend.
+      OPENAI_TTS_SERVER_BASE_URL: http://192.168.1.50:8000/v1
+      # Optional: set to DEBUG while diagnosing backend connectivity.
+      OPENAI_TTS_GRADIO_LOG_LEVEL: WARNING
+      # Leave disabled unless your browser can reach the TTS backend directly and CORS allows it.
+      OPENAI_TTS_GRADIO_ENABLE_BROWSER_AUDIO: "0"
+    restart: unless-stopped

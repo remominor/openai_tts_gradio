@@ -50,6 +50,41 @@ OPENAI_TTS_GRADIO_ENABLE_BROWSER_AUDIO=1 \
 python openai_tts_gradio.py --server-base-url http://10.50.0.51:8000/v1
 ```
 
+## Docker / Unraid
+
+The container runs only this UI; your OpenAI-compatible TTS server remains a
+separate service. The UI does not store application state, so it does not need
+a volume mapping.
+
+1. Copy this project to your Unraid server (for example,
+   `/mnt/user/appdata/openai-tts-gradio`).
+2. In `compose.yaml`, replace `192.168.1.50:8000` with the LAN IP and port of
+   your TTS server. Do not use `localhost` unless that server runs inside this
+   same container.
+3. In Unraid's Compose Manager, add a stack using that directory and deploy it.
+   Alternatively, from that directory run `docker compose up -d --build`.
+4. Open `http://<unraid-host>:7860`.
+
+To deploy from the Unraid Docker tab without Compose, first build the image
+from the project directory:
+
+```bash
+docker build -t openai-tts-gradio:latest .
+```
+
+Then create a container with these settings:
+
+- Repository: `openai-tts-gradio:latest`
+- Network type: `bridge`
+- Port mapping: host `7860` to container `7860` (TCP)
+- Environment variable: `OPENAI_TTS_SERVER_BASE_URL` =
+  `http://<tts-server-lan-ip>:8000/v1`
+- Restart policy: `unless-stopped`
+
+The image runs as an unprivileged user and exposes a Docker health check. For
+an Unraid system with a reverse proxy, point the proxy at port `7860`; ensure
+the proxy allows WebSocket upgrades for Gradio's queue.
+
 ## CLI
 
 ```bash
