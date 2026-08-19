@@ -1,7 +1,7 @@
 services:
   openai-tts-gradio:
     build: .
-    image: openai-tts-gradio:latest
+    image: ghcr.io/remominor/openai_tts_gradio:latest
     container_name: openai-tts-gradio
     ports:
       - "7860:7860"

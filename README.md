@@ -56,6 +56,19 @@ The container runs only this UI; your OpenAI-compatible TTS server remains a
 separate service. The UI does not store application state, so it does not need
 a volume mapping.
 
+The published image is available at
+`ghcr.io/remominor/openai_tts_gradio:latest`:
+
+```bash
+docker pull ghcr.io/remominor/openai_tts_gradio:latest
+docker run --rm -p 7860:7860 \
+  -e OPENAI_TTS_SERVER_BASE_URL=http://<tts-server-lan-ip>:8000/v1 \
+  ghcr.io/remominor/openai_tts_gradio:latest
+```
+
+Every push to `main` refreshes the `latest` image. Version tags also publish
+version and commit-SHA tags.
+
 1. Copy this project to your Unraid server (for example,
    `/mnt/user/appdata/openai-tts-gradio`).
 2. In `compose.yaml`, replace `192.168.1.50:8000` with the LAN IP and port of
