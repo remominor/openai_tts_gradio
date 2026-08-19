@@ -3,6 +3,7 @@ from __future__ import annotations
 import mimetypes
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import gradio as gr
 import httpx
@@ -128,6 +129,89 @@ def voice_dropdown_choices(voices: list[dict[str, Any]]) -> list[tuple[str, str]
     return choices
 
 
+def _voice_url(endpoints: APIEndpoints, voice_id: str) -> str:
+    return f"{endpoints.voices_url}/{quote(voice_id, safe='')}"
+
+
+def load_voice_details(
+    server_base_url: str,
+    voice_id: str | None,
+) -> tuple[str, str, str]:
+    """Load editable metadata for the selected voice."""
+    if not voice_id or voice_id == "default":
+        return "", "", "Select an uploaded voice to edit."
+    try:
+        endpoints = normalize_server_base_url(server_base_url)
+        voices, _voice_dir = fetch_voices(endpoints)
+        selected = next((item for item in voices if item.get("id") == voice_id), None)
+        if selected is None:
+            return "", "", status_markup("Selected voice was not found on the server.", ok=False)
+        return (
+            str(selected.get("name") or selected.get("id") or ""),
+            str(selected.get("ref_text") or ""),
+            status_markup(f"Editing <code>{selected.get('name') or selected.get('id')}</code>.", ok=True),
+        )
+    except Exception as exc:
+        return "", "", status_markup(format_error("Voice details failed", exc), ok=False)
+
+
+def update_voice(
+    server_base_url: str,
+    voice_id: str | None,
+    voice_name: str,
+    ref_text: str,
+) -> tuple[dict[str, Any], str, str, str, str]:
+    if not voice_id or voice_id == "default":
+        return gr.update(), "", "", status_markup("Select an uploaded voice to update.", ok=False), store_voice_selection(voice_id)
+    try:
+        endpoints = normalize_server_base_url(server_base_url)
+        response = httpx.patch(
+            _voice_url(endpoints, voice_id),
+            json={"name": voice_name.strip(), "ref_text": ref_text.strip()},
+            timeout=DEFAULT_REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        updated = response.json()
+        voices, _voice_dir = fetch_voices(endpoints)
+        choices = voice_dropdown_choices(voices)
+        new_voice_id = str(updated.get("id") or updated.get("voice_id") or voice_id)
+        status = status_markup(f"Updated voice <code>{new_voice_id}</code>.", ok=True)
+        return (
+            gr.update(choices=choices, value=new_voice_id),
+            str(updated.get("name") or new_voice_id),
+            str(updated.get("ref_text") or ""),
+            status,
+            new_voice_id,
+        )
+    except Exception as exc:
+        return gr.update(), voice_name, ref_text, status_markup(format_error("Voice update failed", exc), ok=False), store_voice_selection(voice_id)
+
+
+def delete_voice(
+    server_base_url: str,
+    voice_id: str | None,
+) -> tuple[dict[str, Any], str, str, str, str]:
+    if voice_id == "__cancelled__":
+        return gr.update(), gr.skip(), gr.skip(), gr.skip(), gr.skip()
+    if not voice_id or voice_id == "default":
+        return gr.update(), "", "", status_markup("Select an uploaded voice to delete.", ok=False), store_voice_selection(voice_id)
+    try:
+        endpoints = normalize_server_base_url(server_base_url)
+        response = httpx.delete(_voice_url(endpoints, voice_id), timeout=DEFAULT_REQUEST_TIMEOUT)
+        response.raise_for_status()
+        voices, _voice_dir = fetch_voices(endpoints)
+        status = status_markup(f"Deleted voice <code>{voice_id}</code>.", ok=True)
+        return (
+            gr.update(choices=voice_dropdown_choices(voices), value="default"),
+            "",
+            "",
+            status,
+            "default",
+        )
+    except Exception as exc:
+        return gr.update(), "", "", status_markup(format_error("Voice deletion failed", exc), ok=False), store_voice_selection(voice_id)
+
+
 def upload_voice(
     server_base_url: str,
     voice_file: str | None,
@@ -161,7 +245,10 @@ def upload_voice(
         )
 
     data = {
-        "voice_name": voice_name.strip(),
+        # The server's upload API calls this form field "name". Keep the
+        # client-side variable named voice_name because it describes the UI
+        # value, but submit the API's field name so it is persisted.
+        "name": voice_name.strip(),
         "ref_text": ref_text.strip(),
         "preload": "true" if preload else "false",
     }
@@ -198,10 +285,18 @@ def upload_voice(
 
     voice_id = str(result.get("voice_id") or current_voice or "default")
     voice_choices = voice_dropdown_choices(voices)
-    valid_voice_values = {value for _label, value in voice_choices}
-    voice_value = voice_id if voice_id in valid_voice_values else "default"
+    uploaded_voice = next(
+        (
+            voice
+            for voice in voices
+            if str(voice.get("voice_id") or "") == voice_id
+            or str(voice.get("id") or "") == voice_id
+        ),
+        None,
+    )
+    voice_value = str(uploaded_voice.get("id")) if uploaded_voice else "default"
 
-    voice_label = result.get("voice", {}).get("label", voice_value)
+    voice_label = (uploaded_voice or {}).get("label", voice_value)
     status = f"Uploaded voice <code>{voice_label}</code>"
     if voice_dir:
         status += f" to <code>{voice_dir}</code>"

@@ -3,7 +3,12 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from openai_tts_gradio_app.server_api import fetch_voices, normalize_server_base_url
+from openai_tts_gradio_app.server_api import (
+    delete_voice,
+    fetch_voices,
+    normalize_server_base_url,
+    update_voice,
+)
 
 
 class _FakeResponse:
@@ -35,6 +40,48 @@ class ServerApiTest(unittest.TestCase):
     def test_normalize_server_base_url_requires_value(self) -> None:
         with self.assertRaisesRegex(ValueError, "required"):
             normalize_server_base_url("   ")
+
+    @patch("openai_tts_gradio_app.server_api.httpx.get")
+    @patch("openai_tts_gradio_app.server_api.httpx.patch")
+    def test_update_voice_sends_metadata_and_refreshes_choices(self, mock_patch, mock_get) -> None:
+        mock_patch.return_value = _FakeResponse(
+            {"id": "renamed", "voice_id": "voice-a", "name": "renamed", "ref_text": "updated"}
+        )
+        mock_get.return_value = _FakeResponse(
+            {"data": [{"id": "renamed", "name": "renamed", "voice_id": "voice-a"}]}
+        )
+
+        dropdown, name, ref_text, _status, selected = update_voice(
+            "http://localhost:8000/v1", "voice-a", "renamed", "updated"
+        )
+
+        mock_patch.assert_called_once_with(
+            "http://localhost:8000/v1/audio/voices/voice-a",
+            json={"name": "renamed", "ref_text": "updated"},
+            timeout=15.0,
+        )
+        self.assertEqual(dropdown["value"], "renamed")
+        self.assertEqual(name, "renamed")
+        self.assertEqual(ref_text, "updated")
+        self.assertEqual(selected, "renamed")
+
+    @patch("openai_tts_gradio_app.server_api.httpx.get")
+    @patch("openai_tts_gradio_app.server_api.httpx.delete")
+    def test_delete_voice_refreshes_choices_and_selects_default(self, mock_delete, mock_get) -> None:
+        mock_delete.return_value = _FakeResponse({"deleted": True})
+        mock_get.return_value = _FakeResponse({"data": []})
+
+        dropdown, name, ref_text, _status, selected = delete_voice(
+            "http://localhost:8000/v1", "voice-a"
+        )
+
+        mock_delete.assert_called_once_with(
+            "http://localhost:8000/v1/audio/voices/voice-a", timeout=15.0
+        )
+        self.assertEqual(dropdown["value"], "default")
+        self.assertEqual(name, "")
+        self.assertEqual(ref_text, "")
+        self.assertEqual(selected, "default")
 
     @patch("openai_tts_gradio_app.server_api.httpx.get")
     def test_fetch_voices_prefers_data_objects_over_voice_id_strings(self, mock_get) -> None:

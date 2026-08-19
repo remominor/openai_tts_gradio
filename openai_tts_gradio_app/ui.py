@@ -17,9 +17,12 @@ from .config import (
     STREAM_FORMAT_SSE,
 )
 from .server_api import (
+    delete_voice,
     fetch_models,
     fetch_voices,
+    load_voice_details,
     normalize_server_base_url,
+    update_voice,
     upload_voice,
     voice_dropdown_choices,
 )
@@ -240,6 +243,20 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
                         value=status_markup("No voice upload attempted yet.", ok=True)
                     )
 
+            with gr.Accordion("Manage Selected Voice", open=False):
+                gr.Markdown(
+                    "Select an uploaded voice above to edit its name or transcript, "
+                    "or permanently delete it. Configured voices are read-only."
+                )
+                manage_voice_name = gr.Textbox(label="Voice Name")
+                manage_voice_ref_text = gr.Textbox(label="Reference Transcript", lines=3)
+                with gr.Row():
+                    update_voice_button = gr.Button("Save Voice Changes", variant="secondary")
+                    delete_voice_button = gr.Button("Delete Voice", variant="stop")
+                manage_voice_status = gr.HTML(
+                    value=status_markup("Select an uploaded voice to manage it.", ok=True)
+                )
+
             text_input = gr.Textbox(
                 label="Text to Synthesize",
                 placeholder="Enter English text here...",
@@ -334,6 +351,12 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
                 outputs=[selected_voice],
                 queue=False,
             )
+            voice_dropdown.change(
+                fn=load_voice_details,
+                inputs=[server_base_url, voice_dropdown],
+                outputs=[manage_voice_name, manage_voice_ref_text, manage_voice_status],
+                queue=False,
+            )
 
             upload_button.click(
                 fn=upload_voice,
@@ -347,6 +370,36 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
                     selected_voice,
                 ],
                 outputs=[voice_dropdown, upload_status, server_status, selected_voice],
+            )
+
+            update_voice_button.click(
+                fn=update_voice,
+                inputs=[server_base_url, selected_voice, manage_voice_name, manage_voice_ref_text],
+                outputs=[
+                    voice_dropdown,
+                    manage_voice_name,
+                    manage_voice_ref_text,
+                    manage_voice_status,
+                    selected_voice,
+                ],
+            )
+
+            delete_voice_button.click(
+                fn=delete_voice,
+                inputs=[server_base_url, selected_voice],
+                outputs=[
+                    voice_dropdown,
+                    manage_voice_name,
+                    manage_voice_ref_text,
+                    manage_voice_status,
+                    selected_voice,
+                ],
+                js="""(server_url, voice_id) => {
+                    if (!window.confirm('Delete this uploaded voice permanently?')) {
+                        return [server_url, '__cancelled__'];
+                    }
+                    return [server_url, voice_id];
+                }""",
             )
 
             request_mode.change(
