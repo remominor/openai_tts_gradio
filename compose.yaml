@@ -5,7 +5,10 @@ services:
     container_name: openai-tts-gradio
     ports:
       - "7860:7860"
+    volumes:
+      - ./voices:/app/voices
     environment:
+      OPENAI_TTS_GRADIO_DATA_DIR: /app/voices
       # Change this to the LAN address of your OpenAI-compatible TTS backend.
       OPENAI_TTS_SERVER_BASE_URL: http://192.168.1.50:8000/v1
       # Optional: set to DEBUG while diagnosing backend connectivity.

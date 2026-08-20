@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import mimetypes
+import json
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -8,7 +9,7 @@ from urllib.parse import quote
 import gradio as gr
 import httpx
 
-from .config import APIEndpoints, DEFAULT_REQUEST_TIMEOUT, LOGGER
+from .config import APIEndpoints, DEFAULT_REQUEST_TIMEOUT, DEFAULT_SERVER_BASE_URL, LOGGER, SERVER_HISTORY_PATH
 from .util import format_error, status_markup, store_voice_selection
 
 
@@ -33,6 +34,44 @@ def normalize_server_base_url(server_base_url: str) -> APIEndpoints:
         voices_url=f"{v1_base}/audio/voices",
         upload_url=f"{root_base}/upload_voice",
     )
+
+
+def _clean_server_url(value: str | None) -> str:
+    return (value or "").strip().rstrip("/")
+
+
+def load_server_history(default_url: str | None = None) -> list[str]:
+    """Load recently used server URLs, newest first."""
+    history: list[str] = []
+    try:
+        payload = json.loads(SERVER_HISTORY_PATH.read_text())
+        values = payload.get("servers", []) if isinstance(payload, dict) else payload
+        if isinstance(values, list):
+            history = [_clean_server_url(str(value)) for value in values if str(value).strip()]
+    except FileNotFoundError:
+        pass
+    except Exception as exc:
+        LOGGER.warning("Could not read server history %s: %s", SERVER_HISTORY_PATH, exc)
+
+    ordered: list[str] = []
+    for value in [_clean_server_url(default_url or DEFAULT_SERVER_BASE_URL), *history]:
+        if value and value not in ordered:
+            ordered.append(value)
+    return ordered[:20]
+
+
+def remember_server_url(server_url: str | None) -> dict[str, Any]:
+    """Persist a server URL and return a dropdown update for it."""
+    value = _clean_server_url(server_url)
+    if not value:
+        return gr.update()
+    history = load_server_history(value)
+    try:
+        SERVER_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        SERVER_HISTORY_PATH.write_text(json.dumps({"servers": history}, indent=2) + "\n")
+    except Exception as exc:
+        LOGGER.warning("Could not save server history %s: %s", SERVER_HISTORY_PATH, exc)
+    return gr.update(choices=history, value=value)
 
 
 def fetch_models(endpoints: APIEndpoints) -> list[str]:
