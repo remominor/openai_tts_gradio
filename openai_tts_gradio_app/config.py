@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import gradio as gr
 
@@ -10,6 +11,18 @@ DEFAULT_SERVER_BASE_URL = os.environ.get(
     "OPENAI_TTS_SERVER_BASE_URL",
     "http://localhost:8000/v1",
 )
+_default_data_dir = Path(
+    os.environ.get(
+        "OPENAI_TTS_GRADIO_DATA_DIR",
+        str(Path(os.environ.get("XDG_DATA_HOME", "~/.local/share")).expanduser() / "openai-tts-gradio"),
+    )
+).expanduser()
+SERVER_HISTORY_PATH = Path(
+    os.environ.get(
+        "OPENAI_TTS_GRADIO_SERVER_HISTORY_FILE",
+        str(_default_data_dir / "servers.json"),
+    )
+).expanduser()
 DEFAULT_REQUEST_TIMEOUT = 15.0
 REQUEST_MODE_AUTO = "auto"
 REQUEST_MODE_STREAMING = "streaming"

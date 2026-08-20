@@ -6,7 +6,8 @@ LABEL org.opencontainers.image.source="https://github.com/remominor/openai_tts_g
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    OPENAI_TTS_GRADIO_DATA_DIR=/app/voices
 
 WORKDIR /app
 
@@ -14,7 +15,9 @@ COPY pyproject.toml README.md ./
 COPY openai_tts_gradio_app ./openai_tts_gradio_app
 COPY openai_tts_gradio.py ./
 RUN pip install . && \
-    useradd --create-home --uid 1000 appuser
+    useradd --create-home --uid 1000 appuser && \
+    mkdir -p /app/voices && \
+    chown -R appuser:appuser /app/voices
 
 USER appuser
 

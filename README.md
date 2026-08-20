@@ -19,6 +19,7 @@ parent repository and can be copied to another machine as-is.
 - Keeps browser-direct audio-body streaming available as an explicit opt-in for CORS-capable servers
 - Keeps the completed result in a Gradio `Audio` block for replay or download
 - Uses readable light and dark mode styling
+- Keeps up to 20 recently used server URLs in persistent JSON storage
 
 ## Requirements
 
@@ -50,11 +51,16 @@ OPENAI_TTS_GRADIO_ENABLE_BROWSER_AUDIO=1 \
 python openai_tts_gradio.py --server-base-url http://10.50.0.51:8000/v1
 ```
 
+The default server URL can be configured with either
+`--server-base-url` or `OPENAI_TTS_SERVER_BASE_URL`. The UI presents recent
+servers in a selectable dropdown while still allowing a new URL to be typed.
+
 ## Docker / Unraid
 
 The container runs only this UI; your OpenAI-compatible TTS server remains a
-separate service. The UI does not store application state, so it does not need
-a volume mapping.
+separate service. Recent server URLs are stored in `/app/voices/servers.json`.
+The included Compose configuration maps `./voices` to that path so the history
+survives container recreation.
 
 The published image is available at
 `ghcr.io/remominor/openai_tts_gradio:latest`:

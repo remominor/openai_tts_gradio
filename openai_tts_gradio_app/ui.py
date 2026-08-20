@@ -21,7 +21,9 @@ from .server_api import (
     fetch_models,
     fetch_voices,
     load_voice_details,
+    load_server_history,
     normalize_server_base_url,
+    remember_server_url,
     update_voice,
     upload_voice,
     voice_dropdown_choices,
@@ -175,11 +177,13 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
             )
 
             with gr.Row():
-                server_base_url = gr.Textbox(
+                server_base_url = gr.Dropdown(
                     label="Server Base URL",
+                    choices=load_server_history(default_server_base_url),
                     value=default_server_base_url,
-                    placeholder="http://10.50.0.51:8000/v1",
-                    info="You can enter a root URL or a URL ending in /v1.",
+                    allow_custom_value=True,
+                    filterable=True,
+                    info="Select a recent server or enter a root URL / URL ending in /v1.",
                     scale=5,
                 )
                 refresh_button = gr.Button("Refresh Models & Voices", variant="secondary", scale=1)
@@ -349,6 +353,13 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
                 fn=store_voice_selection,
                 inputs=[voice_dropdown],
                 outputs=[selected_voice],
+                queue=False,
+            )
+
+            server_base_url.change(
+                fn=remember_server_url,
+                inputs=[server_base_url],
+                outputs=[server_base_url],
                 queue=False,
             )
             voice_dropdown.change(

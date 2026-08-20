@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from openai_tts_gradio_app.server_api import (
     delete_voice,
     fetch_voices,
+    load_server_history,
     normalize_server_base_url,
+    remember_server_url,
     update_voice,
 )
 
@@ -40,6 +44,21 @@ class ServerApiTest(unittest.TestCase):
     def test_normalize_server_base_url_requires_value(self) -> None:
         with self.assertRaisesRegex(ValueError, "required"):
             normalize_server_base_url("   ")
+
+    def test_server_history_persists_recent_urls(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            history_path = Path(temp_dir) / "servers.json"
+            with patch("openai_tts_gradio_app.server_api.SERVER_HISTORY_PATH", history_path):
+                remember_server_url("http://tts-two:8000/v1/")
+                remember_server_url("http://tts-one:8000/v1")
+
+                self.assertEqual(
+                    load_server_history("http://tts-one:8000/v1"),
+                    [
+                        "http://tts-one:8000/v1",
+                        "http://tts-two:8000/v1",
+                    ],
+                )
 
     @patch("openai_tts_gradio_app.server_api.httpx.get")
     @patch("openai_tts_gradio_app.server_api.httpx.patch")
