@@ -49,7 +49,7 @@ def dispatch_server_generate_request(
     request_mode: str,
     stream_format: str,
     instructions: str = "",
-    guidance_scale: float | None = None,
+    guidance_scale: float | str | None = None,
 ) -> Any:
     live_events, output_audio, generation_status = reset_audio_outputs(request_mode)
     yield live_events, output_audio, generation_status
@@ -75,7 +75,7 @@ def generate_speech(
     request_mode: str,
     stream_format: str,
     instructions: str = "",
-    guidance_scale: float | None = None,
+    guidance_scale: float | str | None = None,
 ) -> Any:
     request_text = text.strip()
     if not request_text:
@@ -110,7 +110,7 @@ def generate_speech(
     }
     if instructions and instructions.strip():
         payload["instructions"] = instructions.strip()
-    if guidance_scale is not None:
+    if guidance_scale is not None and str(guidance_scale).strip():
         payload["guidance_scale"] = guidance_scale
     if mode != REQUEST_MODE_NON_STREAMING and requested_stream_format != STREAM_FORMAT_DEFAULT:
         payload["stream_format"] = requested_stream_format

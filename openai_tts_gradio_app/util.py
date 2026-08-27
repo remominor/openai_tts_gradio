@@ -29,7 +29,11 @@ def supports_kwarg(callable_obj: Any, name: str) -> bool:
 
 def format_error(prefix: str, exc: Exception) -> str:
     if isinstance(exc, httpx.HTTPStatusError):
-        detail = exc.response.text.strip() or str(exc)
+        try:
+            detail = exc.response.text.strip()
+        except httpx.ResponseNotRead:
+            detail = ""
+        detail = detail or str(exc)
         return f"{prefix}: HTTP {exc.response.status_code} - {detail}"
     return f"{prefix}: {exc}"
 
