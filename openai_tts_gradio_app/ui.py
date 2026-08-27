@@ -272,12 +272,10 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
                 placeholder="Voice design or direction, e.g. speak warmly and slowly…",
                 lines=2,
             )
-            guidance_scale = gr.Number(
+            guidance_scale = gr.Textbox(
                 label="CFG Scale (blank = server default)",
-                value=None,
-                precision=2,
-                minimum=0.001,
-                maximum=10,
+                value="",
+                placeholder="Auto",
             )
             request_mode = gr.Radio(
                 label="Request Mode",
