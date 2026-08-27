@@ -267,6 +267,18 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
                 lines=7,
                 max_lines=14,
             )
+            instructions_input = gr.Textbox(
+                label="Instructions (optional)",
+                placeholder="Voice design or direction, e.g. speak warmly and slowly…",
+                lines=2,
+            )
+            guidance_scale = gr.Number(
+                label="CFG Scale (blank = server default)",
+                value=None,
+                precision=2,
+                minimum=0.001,
+                maximum=10,
+            )
             request_mode = gr.Radio(
                 label="Request Mode",
                 choices=[
@@ -435,6 +447,8 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
                     text_input,
                     request_mode,
                     stream_format,
+                    instructions_input,
+                    guidance_scale,
                 ],
                 outputs=[live_audio_events, output_audio, generation_status],
                 concurrency_limit=None,
@@ -448,6 +462,8 @@ def create_demo(default_server_base_url: str) -> gr.Blocks:
                     voice_dropdown,
                     text_input,
                     request_mode,
+                    instructions_input,
+                    guidance_scale,
                 ],
                 outputs=[generation_status],
                 js=browser_generate_click_js(),

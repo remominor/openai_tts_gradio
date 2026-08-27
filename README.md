@@ -14,6 +14,7 @@ parent repository and can be copied to another machine as-is.
 - Lets you preview a local voice file before upload
 - Supports `Auto`, `Streaming`, and `Non-streaming` request modes
 - Supports `Default`, `SSE`, and `Audio` stream format requests for `/v1/audio/speech`
+- Supports optional voice-design/direction instructions and per-generation CFG scale overrides
 - Streams playback from `/v1/audio/speech` over SSE or streaming WAV/PCM audio bodies when the server supports it
 - Uses the Gradio/server audio-body path by default for `Audio` streaming so it works with servers that do not support SSE or browser cross-origin fetches
 - Keeps browser-direct audio-body streaming available as an explicit opt-in for CORS-capable servers

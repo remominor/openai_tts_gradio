@@ -635,7 +635,9 @@ def live_player_head() -> str:
     modelId,
     voiceId,
     text,
-    requestMode
+    requestMode,
+    instructions,
+    guidanceScale
   ) {{
     const requestText = String(text || "").trim();
     if (!requestText) {{
@@ -675,14 +677,17 @@ def live_player_head() -> str:
     await dispatchDirectPayload({{ type: "start", stream_id: streamId, seq }});
 
     try {{
-      const requestBody = JSON.stringify({{
+      const requestPayload = {{
         model: modelId,
         input: requestText,
         voice: voiceId || "default",
         response_format: "wav",
         stream: true,
         stream_format: "audio",
-      }});
+      }};
+      if (String(instructions || "").trim()) requestPayload.instructions = String(instructions).trim();
+      if (guidanceScale !== null && guidanceScale !== undefined && guidanceScale !== "") requestPayload.guidance_scale = Number(guidanceScale);
+      const requestBody = JSON.stringify(requestPayload);
       let response = null;
       let fetchError = null;
       for (const speechUrl of endpoints.speechUrls || [endpoints.speechUrl]) {{
@@ -977,7 +982,7 @@ def live_player_head() -> str:
 
 def browser_generate_click_js() -> str:
     return """
-async (serverBaseUrl, modelId, voiceId, text, requestMode) => {
+async (serverBaseUrl, modelId, voiceId, text, requestMode, instructions, guidanceScale) => {
   if (!window.openaiTtsBrowser || !window.openaiTtsBrowser.startAudioBodyRequest) {
     const message =
       "Browser audio controller is unavailable. Reload the page and try again.";
@@ -993,6 +998,8 @@ async (serverBaseUrl, modelId, voiceId, text, requestMode) => {
     voiceId,
     text,
     requestMode,
+    instructions,
+    guidanceScale,
   );
 }
 """
